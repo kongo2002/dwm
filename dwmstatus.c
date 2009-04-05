@@ -23,72 +23,6 @@ static struct statfs fs;
 static unsigned long cpu0_total, cpu0_active, cpu1_total, cpu1_active = 0;
 static unsigned long net_transmit, net_receive = 0;
 
-/* runs a (shell) command and returns the output in text[] */
-/*
-int run_cmd(const char *command)
-{
-    int pd[2], l=0, r=0, p=0;
-
-    if (pipe(pd) == -1)
-        return 0;
-
-    if ((p = fork()) == 0)
-    {
-        close(pd[0]);
-        close(2);
-        close(0);
-        dup2(pd[1], 1);
-        execlp("/bin/sh", "/bin/sh", "-c", command, NULL);
-        perror("exec failed");
-        exit(1);
-    }
-    else if (p == 1)
-        return 0;
-
-    close(pd[1]);
-    waitpid(p, NULL, 0);
-
-    while ((r = read(pd[0], text+l, 1024-l)) > 0)
-        l += r;
-
-    close(pd[0]);
-
-    text[l] = 0;
-    
-    return 1;
-}
-*/
-
-/*
-int get_mpd(char *status)
-{
-    char *tmp = text;
-    int i = 0;
-
-    if (!run_cmd("mpc status"))
-        return 0;
-
-    if (strncmp(text, "volume:", 7) == 0)
-        return 0;
-
-    while (*tmp != '\n')
-    {
-        if (i >= 127)
-            break;
-        i++;
-        tmp++;
-    }
-    *tmp = '\0';
-
-    int a, b, c, d;
-    sscanf(++tmp, "[playing] #%*d/%*d %d:%d/%d:%d", &a, &b, &c, &d);
-
-    sprintf(status, "%s | %s [%d:%.2d/%d:%.2d]", status, text, a, b, c, d);
-
-    return 1;
-}
-*/
-
 int get_mpd2(char *status)
 {
     mpd_Connection *conn;
@@ -161,29 +95,9 @@ int get_mpd2(char *status)
     return 1;
 } 
 
-/*
-int get_fs(char *status)
-{
-    if (!run_cmd("df -h /dev/sda4"))
-        return 0;
-
-    char *tmp = text;
-    int used, total, perc = 0;
-
-    while (*tmp != '\n')
-        ++tmp;
-
-    sscanf(++tmp, "/dev/sda4 %dG %dG %*dG %d%%", &total, &used, &perc);
-
-    sprintf(status, "%s | %d%% (%dG/%dG)", status, perc, used, total);
-
-    return 1;
-}
-*/
-
 int get_fs2(char *status)
 {
-    unsigned long avail, total, used, free = 0;
+    unsigned long total, used, free = 0;
 
     total = fs.f_blocks * fs.f_bsize / 1024 / 1024 / 1024;
     free = fs.f_bfree * fs.f_bsize / 1024 / 1024 / 1024;
@@ -456,8 +370,6 @@ int main(int argc, char **argv)
         get_uptime(statusbar);
         get_time(statusbar);
 
-        //printf("%s\n", statusbar); 
-        
         XStoreName(disp, root, statusbar);
         XFlush(disp);
 
