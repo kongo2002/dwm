@@ -7,12 +7,16 @@
 #include <unistd.h>
 #include <time.h>
 
+#include <sys/sysinfo.h>
+
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 
 #include <libmpdclient.h>
 
 char text[1024];
+
+static struct sysinfo info;
 
 static unsigned long cpu0_total, cpu0_active, cpu1_total, cpu1_active = 0;
 static unsigned long net_transmit, net_receive = 0;
@@ -355,22 +359,83 @@ int get_time(char *status)
     return 1;
 }
 
+int get_procs(char *status)
+{
+    unsigned short int procs, procs_run = 0;
+    char buffer[256];
+    FILE *proc_fp;
+
+    proc_fp = fopen("/proc/stat", "r");
+
+    if (proc_fp == NULL)
+        return 0;
+
+    while (!feof(proc_fp))
+    {
+        if (fgets(buffer, 255, proc_fp) == 0)
+            break;
+
+        if (strncmp(buffer, "procs_running ", 14) == 0)
+        {
+            sscanf(buffer, "%*s %hu", &procs_run);
+            break;
+        }
+    }
+
+    fclose(proc_fp);
+
+    procs = info.procs;
+
+    sprintf(status, "%s | %hu/%hu", status, procs_run, procs);
+
+    return 1;
+}   
+
+int get_uptime(char *status)
+{
+    unsigned short int hours, minutes;
+
+    hours = info.uptime / 3600;
+    minutes = (info.uptime % 3600) / 60;
+
+    sprintf(status, "%s | %huh%hu", status, hours, minutes);
+
+    return 1;
+}
+
 int main(int argc, char **argv)
 {
-    //int i = 0;
+    Display *disp;
+    Window root;
     char statusbar[1024];
+
+    if (!(disp = XOpenDisplay(0)))
+    {
+        fprintf(stderr, "%s: cannot open display\n", argv[0]);
+        return 0;
+    }
+
+    root = DefaultRootWindow(disp);
 
     while (1)
     {
         strcpy(statusbar, " ");
+
+        sysinfo(&info);
+
         get_cpu(statusbar);
+        get_procs(statusbar);
         get_fs(statusbar);
         get_mem(statusbar);
         get_net(statusbar);
-        //get_mpd(statusbar);
         get_mpd2(statusbar);
+        get_uptime(statusbar);
         get_time(statusbar);
-        printf("%s\n", statusbar);
+
+        //printf("%s\n", statusbar); 
+        
+        XStoreName(disp, root, statusbar);
+        XFlush(disp);
 
         sleep(1);
     }
