@@ -2,4 +2,6 @@
 
 ./dwmstatus &
 
+fbsetbg -l
+
 exec ~/.xinitrc
