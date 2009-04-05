@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include <sys/sysinfo.h>
+#include <sys/statfs.h>
 
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
@@ -17,11 +18,13 @@
 char text[1024];
 
 static struct sysinfo info;
+static struct statfs fs;
 
 static unsigned long cpu0_total, cpu0_active, cpu1_total, cpu1_active = 0;
 static unsigned long net_transmit, net_receive = 0;
 
 /* runs a (shell) command and returns the output in text[] */
+/*
 int run_cmd(const char *command)
 {
     int pd[2], l=0, r=0, p=0;
@@ -54,6 +57,7 @@ int run_cmd(const char *command)
     
     return 1;
 }
+*/
 
 /*
 int get_mpd(char *status)
@@ -155,8 +159,9 @@ int get_mpd2(char *status)
     mpd_closeConnection(conn);
 
     return 1;
-}       
+} 
 
+/*
 int get_fs(char *status)
 {
     if (!run_cmd("df -h /dev/sda4"))
@@ -171,6 +176,24 @@ int get_fs(char *status)
     sscanf(++tmp, "/dev/sda4 %dG %dG %*dG %d%%", &total, &used, &perc);
 
     sprintf(status, "%s | %d%% (%dG/%dG)", status, perc, used, total);
+
+    return 1;
+}
+*/
+
+int get_fs2(char *status)
+{
+    unsigned long avail, total, used, free = 0;
+
+    total = fs.f_blocks * fs.f_bsize / 1024 / 1024 / 1024;
+    free = fs.f_bfree * fs.f_bsize / 1024 / 1024 / 1024;
+    used = total - free;
+
+    sprintf(status, "%s | %.0f%% (%dG/%dG)", 
+                    status,
+                    (float) used / total * 100,
+                    (int) used,
+                    (int) total);
 
     return 1;
 }
@@ -422,10 +445,11 @@ int main(int argc, char **argv)
         strcpy(statusbar, " ");
 
         sysinfo(&info);
+        statfs("/home", &fs);
 
         get_cpu(statusbar);
         get_procs(statusbar);
-        get_fs(statusbar);
+        get_fs2(statusbar);
         get_mem(statusbar);
         get_net(statusbar);
         get_mpd2(statusbar);

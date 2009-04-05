@@ -1,6 +1,6 @@
 #!/bin/sh
 
-./dwmstatus &
+~/.dwm/dwmstatus &
 
 fbsetbg -l
 
