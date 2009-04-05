@@ -2,12 +2,12 @@
 
 /* appearance */
 static const char font[]            = "-*-terminus-medium-r-normal-*-14-*-*-*-*-*-*-*";
-static const char normbordercolor[] = "#cccccc";
-static const char normbgcolor[]     = "#cccccc";
-static const char normfgcolor[]     = "#000000";
-static const char selbordercolor[]  = "#0066ff";
-static const char selbgcolor[]      = "#0066ff";
-static const char selfgcolor[]      = "#ffffff";
+static const char normbordercolor[] = "#000000";
+static const char normbgcolor[]     = "#000000";
+static const char normfgcolor[]     = "#eeeeee";
+static const char selbordercolor[]  = "#888888";
+static const char selbgcolor[]      = "#000000";
+static const char selfgcolor[]      = "#ff6600";
 static unsigned int borderpx        = 1;        /* border pixel of windows */
 static unsigned int snap            = 32;       /* snap pixel */
 static Bool showbar                 = True;     /* False means no bar */
@@ -51,10 +51,17 @@ static Layout layouts[] = {
 static const char *dmenucmd[] = { "dmenu_run", "-fn", font, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, NULL };
 static const char *termcmd[]  = { "urxvt", NULL };
 
+/* custom commands */
+static const char *browsercmd[] = { "firefox", NULL };
+static const char *mailcmd[] = { "thunderbird", NULL };
+static const char *launchercmd[] = { "gmrun", NULL };
+
 static Key keys[] = {
 	/* modifier                     key        function        argument */
-	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
+	{ MODKEY,                       XK_p,      spawn,          {.v = launchercmd } },
 	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
+    { MODKEY,                       XK_f,      spawn,          {.v = browsercmd } },
+    { MODKEY,                       XK_t,      spawn,          {.v = mailcmd } },
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
 	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
 	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
