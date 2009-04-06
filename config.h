@@ -22,7 +22,7 @@ static unsigned int tagset[] = {1, 1}; /* after start, first tag is selected */
 static Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating */
 	{ "Gimp",     NULL,       NULL,       0,            True },
-	{ "Firefox",  NULL,       NULL,       1 << 8,       True },
+	{ "Firefox",  NULL,       NULL,       1 << 8,       False },
 };
 
 /* layout(s) */
@@ -105,6 +105,40 @@ pushdown(const Arg *arg) {
 	arrange();
 }
 
+static void
+nexttag(const Arg *arg) {
+    unsigned int seld = 0, i = 0;
+
+    for (i=0; i<LENGTH(tags); ++i) {
+        if (tagset[seltags] & (1 << i))
+            ++seld;
+    }
+    if (seld != 1)
+        return;
+    if (tagset[seltags] & (1 << (LENGTH(tags)-1)))
+        tagset[seltags] = 1;
+    else
+        tagset[seltags] = tagset[seltags] << 1;
+    arrange();
+}
+
+static void
+prevtag(const Arg *arg) {
+    unsigned int seld = 0, i = 0;
+
+    for (i=0; i<LENGTH(tags); ++i) {
+        if (tagset[seltags] & (1 << i))
+            ++seld;
+    }
+    if (seld != 1)
+        return;
+    if (tagset[seltags] & 1)
+        tagset[seltags] = (1 << (LENGTH(tags)-1));
+    else
+        tagset[seltags] = tagset[seltags] >> 1;
+    arrange();
+}
+
 /* commands */
 static const char *dmenucmd[] = { "dmenu_run", "-fn", font, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, NULL };
 static const char *termcmd[]  = { "urxvt", NULL };
@@ -147,6 +181,8 @@ static Key keys[] = {
 	TAGKEYS(                        XK_8,                      7)
 	TAGKEYS(                        XK_9,                      8)
 	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
+    { MODKEY,                       XK_Right,  nexttag,        {0} },
+    { MODKEY,                       XK_Left,   prevtag,        {0} },
 };
 
 /* button definitions */
