@@ -22,6 +22,8 @@ static unsigned int tagset[] = {1, 1}; /* after start, first tag is selected */
 static Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating */
 	{ "Gimp",     NULL,       NULL,       0,            True },
+    { "jEdit",    NULL,       NULL,       0,            True },
+    { "GVIM",     NULL,       NULL,       0,            True },
 	{ "Firefox",  NULL,       NULL,       1 << 8,       False },
 };
 
