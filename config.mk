@@ -1,5 +1,5 @@
 # dwm version
-VERSION = 5.4.1
+VERSION = 5.5
 
 # Customize below to fit your system
 
@@ -11,8 +11,8 @@ X11INC = /usr/X11R6/include
 X11LIB = /usr/X11R6/lib
 
 # Xinerama, un-comment if you want it
-#XINERAMALIBS = -L${X11LIB} -lXinerama
-#XINERAMAFLAGS = -DXINERAMA
+XINERAMALIBS = -L${X11LIB} -lXinerama
+XINERAMAFLAGS = -DXINERAMA
 
 # includes and libs
 INCS = -I. -I/usr/include -I${X11INC}

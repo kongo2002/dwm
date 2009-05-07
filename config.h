@@ -45,8 +45,8 @@ bstack(void) {
 
     c = nexttiled(clients);
     mh = mfact * wh;
-    adjustborder(c, n == 1 ? 0 : borderpx);
-    resize(c, wx, wy, ww - 2 * c->bw, (n == 1 ? wh : mh) - 2 * c->bw, resizehints);
+    /*adjustborder(c, n == 1 ? 0 : borderpx);*/
+    resize(c, wx, wy, ww - 2 * c->bw, (n == 1 ? wh : mh) - 2 * c->bw);
 
     if (--n == 0)
         return;
@@ -60,9 +60,9 @@ bstack(void) {
         h = wh;
 
     for (i = 0, c = nexttiled(c->next); c; c = nexttiled(c->next), i++) {
-        adjustborder(c, borderpx);
+        /*adjustborder(c, borderpx);*/
         resize(c, x, y, ((i + 1 == n) ? wx + ww - x : w) - 2 * c->bw, 
-                h - 2 * c->bw, resizehints);
+                h - 2 * c->bw);
 
         if (w != ww)
             x = c->x + WIDTH(c);

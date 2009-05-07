@@ -128,8 +128,8 @@ typedef struct {
 } Rule;
 
 /* function declarations */
-static void adjustborder(Client *c, unsigned int bw);
 static void applyrules(Client *c);
+static Bool applysizehints(Client *c, int *x, int *y, int *w, int *h);
 static void arrange(void);
 static void attach(Client *c);
 static void attachstack(Client *c);
@@ -170,7 +170,7 @@ static void movemouse(const Arg *arg);
 static Client *nexttiled(Client *c);
 static void propertynotify(XEvent *e);
 static void quit(const Arg *arg);
-static void resize(Client *c, int x, int y, int w, int h, Bool sizehints);
+static void resize(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
 static void restack(void);
 static void run(void);
@@ -179,7 +179,7 @@ static void setclientstate(Client *c, long state);
 static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
 static void setup(void);
-static void showhide(Client *c, unsigned int ntiled);
+static void showhide(Client *c);
 static void sigchld(int signal);
 static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
@@ -246,22 +246,13 @@ struct NumTags { char limitexceeded[sizeof(unsigned int) * 8 < LENGTH(tags) ? -1
 
 /* function implementations */
 void
-adjustborder(Client *c, unsigned int bw) {
-	XWindowChanges wc;
-
-	if(c->bw != bw) {
-		c->bw = wc.border_width = bw;
-		XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
-	}
-}
-
-void
 applyrules(Client *c) {
 	unsigned int i;
 	Rule *r;
 	XClassHint ch = { 0 };
 
 	/* rule matching */
+	c->isfloating = c->tags = 0;
 	if(XGetClassHint(dpy, c->win, &ch)) {
 		for(i = 0; i < LENGTH(rules); i++) {
 			r = &rules[i];
@@ -269,7 +260,7 @@ applyrules(Client *c) {
 			&& (!r->class || (ch.res_class && strstr(ch.res_class, r->class)))
 			&& (!r->instance || (ch.res_name && strstr(ch.res_name, r->instance)))) {
 				c->isfloating = r->isfloating;
-				c->tags |= r->tags & TAGMASK ? r->tags & TAGMASK : tagset[seltags]; 
+				c->tags |= r->tags; 
 			}
 		}
 		if(ch.res_class)
@@ -277,17 +268,77 @@ applyrules(Client *c) {
 		if(ch.res_name)
 			XFree(ch.res_name);
 	}
-	if(!c->tags)
-		c->tags = tagset[seltags];
+	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : tagset[seltags];
+}
+
+Bool
+applysizehints(Client *c, int *x, int *y, int *w, int *h) {
+	Bool baseismin;
+
+	/* set minimum possible */
+	*w = MAX(1, *w);
+	*h = MAX(1, *h);
+
+	if(*x > sx + sw)
+		*x = sw - WIDTH(c);
+	if(*y > sy + sh)
+		*y = sh - HEIGHT(c);
+	if(*x + *w + 2 * c->bw < sx)
+		*x = sx;
+	if(*y + *h + 2 * c->bw < sy)
+		*y = sy;
+	if(*h < bh)
+		*h = bh;
+	if(*w < bh)
+		*w = bh;
+
+	if(resizehints || c->isfloating) {
+		/* see last two sentences in ICCCM 4.1.2.3 */
+		baseismin = c->basew == c->minw && c->baseh == c->minh;
+
+		if(!baseismin) { /* temporarily remove base dimensions */
+			*w -= c->basew;
+			*h -= c->baseh;
+		}
+
+		/* adjust for aspect limits */
+		if(c->mina > 0 && c->maxa > 0) {
+			if(c->maxa < (float)*w / *h)
+				*w = *h * c->maxa;
+			else if(c->mina < (float)*h / *w)
+				*h = *w * c->mina;
+		}
+
+		if(baseismin) { /* increment calculation requires this */
+			*w -= c->basew;
+			*h -= c->baseh;
+		}
+
+		/* adjust for increment value */
+		if(c->incw)
+			*w -= *w % c->incw;
+		if(c->inch)
+			*h -= *h % c->inch;
+
+		/* restore base dimensions */
+		*w += c->basew;
+		*h += c->baseh;
+
+		*w = MAX(*w, c->minw);
+		*h = MAX(*h, c->minh);
+
+		if(c->maxw)
+			*w = MIN(*w, c->maxw);
+
+		if(c->maxh)
+			*h = MIN(*h, c->maxh);
+	}
+	return *x != c->x || *y != c->y || *w != c->w || *h != c->h;
 }
 
 void
 arrange(void) {
-	unsigned int nt;
-	Client *c;
-
-	for(nt = 0, c = nexttiled(clients); c; c = nexttiled(c->next), nt++);
-	showhide(stack, nt);
+	showhide(stack);
 	focus(NULL);
 	if(lt[sellt]->arrange)
 		lt[sellt]->arrange();
@@ -939,13 +990,10 @@ maprequest(XEvent *e) {
 
 void
 monocle(void) {
-	unsigned int n;
 	Client *c;
 
-	for(n = 0, c = nexttiled(clients); c && n < 2; c = nexttiled(c->next), n++);
 	for(c = nexttiled(clients); c; c = nexttiled(c->next)) {
-		adjustborder(c, n == 1 ? 0 : borderpx);
-		resize(c, wx, wy, ww - 2 * c->bw, wh - 2 * c->bw, resizehints);
+		resize(c, wx, wy, ww - 2 * c->bw, wh - 2 * c->bw);
 	}
 }
 
@@ -966,8 +1014,6 @@ movemouse(const Arg *arg) {
 	None, cursor[CurMove], CurrentTime) != GrabSuccess)
 		return;
 	XQueryPointer(dpy, root, &dummy, &dummy, &x, &y, &di, &di, &dui);
-	if(usegrab)
-		XGrabServer(dpy);
 	do {
 		XMaskEvent(dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
 		switch (ev.type) {
@@ -993,13 +1039,11 @@ movemouse(const Arg *arg) {
 					togglefloating(NULL);
 			}
 			if(!lt[sellt]->arrange || c->isfloating)
-				resize(c, nx, ny, c->w, c->h, False);
+				resize(c, nx, ny, c->w, c->h);
 			break;
 		}
 	}
 	while(ev.type != ButtonRelease);
-	if(usegrab)
-		XUngrabServer(dpy);
 	XUngrabPointer(dpy, CurrentTime);
 }
 
@@ -1015,7 +1059,7 @@ propertynotify(XEvent *e) {
 	Window trans;
 	XPropertyEvent *ev = &e->xproperty;
 
-	if((ev->window == root) && (ev->atom = XA_WM_NAME))
+	if((ev->window == root) && (ev->atom == XA_WM_NAME))
 		updatestatus();
 	else if(ev->state == PropertyDelete)
 		return; /* ignore */
@@ -1049,69 +1093,10 @@ quit(const Arg *arg) {
 }
 
 void
-resize(Client *c, int x, int y, int w, int h, Bool sizehints) {
+resize(Client *c, int x, int y, int w, int h) {
 	XWindowChanges wc;
 
-	if(sizehints) {
-		/* see last two sentences in ICCCM 4.1.2.3 */
-		Bool baseismin = c->basew == c->minw && c->baseh == c->minh;
-
-		/* set minimum possible */
-		w = MAX(1, w);
-		h = MAX(1, h);
-
-		if(!baseismin) { /* temporarily remove base dimensions */
-			w -= c->basew;
-			h -= c->baseh;
-		}
-
-		/* adjust for aspect limits */
-		if(c->mina > 0 && c->maxa > 0) {
-			if(c->maxa < (float)w / h)
-				w = h * c->maxa;
-			else if(c->mina < (float)h / w)
-				h = w * c->mina;
-		}
-
-		if(baseismin) { /* increment calculation requires this */
-			w -= c->basew;
-			h -= c->baseh;
-		}
-
-		/* adjust for increment value */
-		if(c->incw)
-			w -= w % c->incw;
-		if(c->inch)
-			h -= h % c->inch;
-
-		/* restore base dimensions */
-		w += c->basew;
-		h += c->baseh;
-
-		w = MAX(w, c->minw);
-		h = MAX(h, c->minh);
-
-		if(c->maxw)
-			w = MIN(w, c->maxw);
-
-		if(c->maxh)
-			h = MIN(h, c->maxh);
-	}
-	if(w <= 0 || h <= 0)
-		return;
-	if(x > sx + sw)
-		x = sw - WIDTH(c);
-	if(y > sy + sh)
-		y = sh - HEIGHT(c);
-	if(x + w + 2 * c->bw < sx)
-		x = sx;
-	if(y + h + 2 * c->bw < sy)
-		y = sy;
-	if(h < bh)
-		h = bh;
-	if(w < bh)
-		w = bh;
-	if(c->x != x || c->y != y || c->w != w || c->h != h) {
+	if(applysizehints(c, &x, &y, &w, &h)) {
 		c->x = wc.x = x;
 		c->y = wc.y = y;
 		c->w = wc.width = w;
@@ -1140,8 +1125,6 @@ resizemouse(const Arg *arg) {
 	None, cursor[CurResize], CurrentTime) != GrabSuccess)
 		return;
 	XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
-	if(usegrab)
-		XGrabServer(dpy);
 	do {
 		XMaskEvent(dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
 		switch(ev.type) {
@@ -1161,13 +1144,11 @@ resizemouse(const Arg *arg) {
 					togglefloating(NULL);
 			}
 			if(!lt[sellt]->arrange || c->isfloating)
-				resize(c, c->x, c->y, nw, nh, True);
+				resize(c, c->x, c->y, nw, nh);
 			break;
 		}
 	}
 	while(ev.type != ButtonRelease);
-	if(usegrab)
-		XUngrabServer(dpy);
 	XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
 	XUngrabPointer(dpy, CurrentTime);
 	while(XCheckMaskEvent(dpy, EnterWindowMask, &ev));
@@ -1308,7 +1289,7 @@ setup(void) {
 	dc.sel[ColBG] = getcolor(selbgcolor);
 	dc.sel[ColFG] = getcolor(selfgcolor);
 	dc.drawable = XCreatePixmap(dpy, root, DisplayWidth(dpy, screen), bh, DefaultDepth(dpy, screen));
-	dc.gc = XCreateGC(dpy, root, 0, 0);
+	dc.gc = XCreateGC(dpy, root, 0, NULL);
 	XSetLineAttributes(dpy, dc.gc, 1, LineSolid, CapButt, JoinMiter);
 	if(!dc.font.set)
 		XSetFont(dpy, dc.gc, dc.font.xfont->fid);
@@ -1319,7 +1300,7 @@ setup(void) {
 		blw = MAX(blw, w);
 	}
 
-	wa.override_redirect = 1;
+	wa.override_redirect = True;
 	wa.background_pixmap = ParentRelative;
 	wa.event_mask = ButtonPressMask|ExposureMask;
 
@@ -1345,19 +1326,17 @@ setup(void) {
 }
 
 void
-showhide(Client *c, unsigned int ntiled) {
+showhide(Client *c) {
 	if(!c)
 		return;
 	if(ISVISIBLE(c)) { /* show clients top down */
-		if(c->isfloating || ntiled > 1) /* avoid unnecessary border reverts */
-			adjustborder(c, borderpx);
 		XMoveWindow(dpy, c->win, c->x, c->y);
 		if(!lt[sellt]->arrange || c->isfloating)
-			resize(c, c->x, c->y, c->w, c->h, True);
-		showhide(c->snext, ntiled);
+			resize(c, c->x, c->y, c->w, c->h);
+		showhide(c->snext);
 	}
 	else { /* hide clients bottom up */
-		showhide(c->snext, ntiled);
+		showhide(c->snext);
 		XMoveWindow(dpy, c->win, c->x + 2 * sw, c->y);
 	}
 }
@@ -1414,8 +1393,7 @@ tile(void) {
 	/* master */
 	c = nexttiled(clients);
 	mw = mfact * ww;
-	adjustborder(c, n == 1 ? 0 : borderpx);
-	resize(c, wx, wy, (n == 1 ? ww : mw) - 2 * c->bw, wh - 2 * c->bw, resizehints);
+	resize(c, wx, wy, (n == 1 ? ww : mw) - 2 * c->bw, wh - 2 * c->bw);
 
 	if(--n == 0)
 		return;
@@ -1429,9 +1407,8 @@ tile(void) {
 		h = wh;
 
 	for(i = 0, c = nexttiled(c->next); c; c = nexttiled(c->next), i++) {
-		adjustborder(c, borderpx);
 		resize(c, x, y, w - 2 * c->bw, /* remainder */ ((i + 1 == n)
-		       ? wy + wh - y - 2 * c->bw : h - 2 * c->bw), resizehints);
+		       ? wy + wh - y - 2 * c->bw : h - 2 * c->bw));
 		if(h != wh)
 			y = c->y + HEIGHT(c);
 	}
@@ -1451,7 +1428,7 @@ togglefloating(const Arg *arg) {
 		return;
 	sel->isfloating = !sel->isfloating || sel->isfixed;
 	if(sel->isfloating)
-		resize(sel, sel->x, sel->y, sel->w, sel->h, True);
+		resize(sel, sel->x, sel->y, sel->w, sel->h);
 	arrange();
 }
 
@@ -1463,7 +1440,7 @@ toggletag(const Arg *arg) {
 		return;
 	
 	mask = sel->tags ^ (arg->ui & TAGMASK);
-	if(sel && mask) {
+	if(mask) {
 		sel->tags = mask;
 		arrange();
 	}
@@ -1713,9 +1690,9 @@ main(int argc, char *argv[]) {
 		die("usage: dwm [-v]\n");
 
 	if(!setlocale(LC_CTYPE, "") || !XSupportsLocale())
-		fprintf(stderr, "warning: no locale support\n");
+		fputs("warning: no locale support\n", stderr);
 
-	if(!(dpy = XOpenDisplay(0)))
+	if(!(dpy = XOpenDisplay(NULL)))
 		die("dwm: cannot open display\n");
 
 	checkotherwm();
