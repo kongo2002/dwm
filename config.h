@@ -25,6 +25,7 @@ static Rule rules[] = {
     { "jEdit",    NULL,       NULL,       0,            True },
     { "Gvim",     NULL,       NULL,       1 << 7,       True },
     { "Firefox",  NULL,       NULL,       1 << 8,       False },
+    { "ut2004-bin",   NULL,       NULL,       1 << 6,       True },
 };
 
 /* layout(s) */
