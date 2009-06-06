@@ -335,7 +335,7 @@ int get_uptime(char *status)
     hours = info.uptime / 3600;
     minutes = (info.uptime % 3600) / 60;
 
-    sprintf(status, "%s | %huh%hu", status, hours, minutes);
+    sprintf(status, "%s | %huh%.2hu", status, hours, minutes);
 
     return 1;
 }
