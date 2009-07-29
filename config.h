@@ -8,67 +8,66 @@ static const char normfgcolor[]     = "#eeeeee";
 static const char selbordercolor[]  = "#888888";
 static const char selbgcolor[]      = "#000000";
 static const char selfgcolor[]      = "#ff6600";
-static unsigned int borderpx        = 5;        /* border pixel of windows */
-static unsigned int snap            = 32;       /* snap pixel */
-static Bool showbar                 = True;     /* False means no bar */
-static Bool topbar                  = True;     /* False means bottom bar */
-static Bool usegrab                 = False;    /* True means grabbing the X server
+static const unsigned int borderpx  = 5;        /* border pixel of windows */
+static const unsigned int snap      = 32;       /* snap pixel */
+static const Bool showbar           = True;     /* False means no bar */
+static const Bool topbar            = True;     /* False means bottom bar */
+static const Bool usegrab           = False;    /* True means grabbing the X server
                                                    during mouse-based resizals */
 
 /* tagging */
-static const char tags[][MAXTAGLEN] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
-static unsigned int tagset[] = {1, 1}; /* after start, first tag is selected */
+static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
-static Rule rules[] = {
-    /* class      instance    title       tags mask     isfloating */
-    { "Gimp",     NULL,       NULL,       0,            True },
-    { "jEdit",    NULL,       NULL,       0,            True },
-    { "Pidgin",   NULL,       NULL,       1 << 7,       True },
-    { "Firefox",  NULL,       NULL,       1 << 8,       False },
-    { "ut2004-bin",   NULL,       NULL,       1 << 6,       True },
+static const Rule rules[] = {
+    /* class      instance    title       tags mask     isfloating  monitor */
+    { "Gimp",     NULL,       NULL,       0,            True,       -1 },
+    { "jEdit",    NULL,       NULL,       0,            True,       -1 },
+    { "Pidgin",   NULL,       NULL,       1 << 7,       True,       -1 },
+    { "Firefox",  NULL,       NULL,       1 << 8,       False,      -1 },
+    { "ut2004-bin",   NULL,   NULL,       1 << 6,       True,       -1 },
 };
 
 /* layout(s) */
-static float mfact      = 0.55; /* factor of master area size [0.05..0.95] */
-static Bool resizehints = True; /* False means respect size hints in tiled resizals */
+static const float mfact      = 0.55; /* factor of master area size [0.05..0.95] */
+static const Bool resizehints = True; /* False means respect size hints in tiled resizals */
 
 /* bottom stack layout function */
 void
-bstack(void) {
+bstack(Monitor *m) {
     int x, y, h, w, mh;
     unsigned int i, n;
     Client *c;
 
-    for (n = 0, c = nexttiled(clients); c; c = nexttiled(c->next), n++);
+    for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 
     if (n == 0)
         return;
 
-    c = nexttiled(clients);
-    mh = mfact * wh;
-    resize(c, wx, wy, ww - 2 * c->bw, (n == 1 ? wh : mh) - 2 * c->bw);
+    c = nexttiled(m->clients);
+    mh = m->mfact * m->wh;
+    resize(c, m->wx, m->wy, m->ww - 2 * c->bw, (n == 1 ? m->wh : mh) - 2 * c->bw, False);
 
     if (--n == 0)
         return;
 
-    x = wx;
-    y = (wy + mh > c->y + c->h) ? c->y + c->h + 2 * c->bw : wy + mh;
-    w = ww / n;
-    h = (wy + mh > c->y + c->h) ? wy + wh - y : wh -  mh;
+    x = m->wx;
+    y = (m->wy + mh > c->y + c->h) ? c->y + c->h + 2 * c->bw : m->wy + mh;
+    w = m->ww / n;
+    h = (m->wy + mh > c->y + c->h) ? m->wy + m->wh - y : m->wh -  mh;
 
     if (h < bh)
-        h = wh;
+        h = m->wh;
 
     for (i = 0, c = nexttiled(c->next); c; c = nexttiled(c->next), i++) {
-        resize(c, x, y, ((i + 1 == n) ? wx + ww - x : w) - 2 * c->bw, 
-                h - 2 * c->bw);
+        resize(c, x, y, ((i + 1 == n) ? m->wx + m->ww - x : w) - 2 * c->bw, 
+                h - 2 * c->bw, False);
 
-        if (w != ww)
+        if (w != m->ww)
             x = c->x + WIDTH(c);
     }
 }
 
-static Layout layouts[] = {
+static const Layout layouts[] = {
     /* symbol     arrange function */
     { "[]=",      tile },    /* first entry is default */
     { "><>",      NULL },    /* no layout function means floating behavior */
@@ -92,7 +91,7 @@ static Client *
 prevtiled(Client *c) {
     Client *p, *r;
 
-    for(p = clients, r = NULL; p && p != c; p = p->next)
+    for(p = selmon->clients, r = NULL; p && p != c; p = p->next)
         if(!p->isfloating && ISVISIBLE(p))
             r = p;
     return r;
@@ -100,6 +99,7 @@ prevtiled(Client *c) {
 
 static void
 pushup(const Arg *arg) {
+    Client *sel = selmon->sel;
     Client *c;
 
     if(!sel || sel->isfloating)
@@ -108,10 +108,10 @@ pushup(const Arg *arg) {
         /* attach before c */
         detach(sel);
         sel->next = c;
-        if(clients == c)
-            clients = sel;
+        if(selmon->clients == c)
+            selmon->clients = sel;
         else {
-            for(c = clients; c->next != sel->next; c = c->next);
+            for(c = selmon->clients; c->next != sel->next; c = c->next);
             c->next = sel;
         }
     } else {
@@ -127,6 +127,7 @@ pushup(const Arg *arg) {
 
 static void
 pushdown(const Arg *arg) {
+    Client *sel = selmon->sel;
     Client *c;
 
     if(!sel || sel->isfloating)
@@ -150,15 +151,15 @@ nexttag(const Arg *arg) {
     unsigned int seld = 0, i = 0;
 
     for (i=0; i<LENGTH(tags); ++i) {
-        if (tagset[seltags] & (1 << i))
+        if (selmon->tagset[selmon->seltags] & (1 << i))
             ++seld;
     }
     if (seld != 1)
         return;
-    if (tagset[seltags] & (1 << (LENGTH(tags)-1)))
-        tagset[seltags] = 1;
+    if (selmon->tagset[selmon->seltags] & (1 << (LENGTH(tags)-1)))
+        selmon->tagset[selmon->seltags] = 1;
     else
-        tagset[seltags] = tagset[seltags] << 1;
+        selmon->tagset[selmon->seltags] = selmon->tagset[selmon->seltags] << 1;
     arrange();
 }
 
@@ -167,15 +168,15 @@ prevtag(const Arg *arg) {
     unsigned int seld = 0, i = 0;
 
     for (i=0; i<LENGTH(tags); ++i) {
-        if (tagset[seltags] & (1 << i))
+        if (selmon->tagset[selmon->seltags] & (1 << i))
             ++seld;
     }
     if (seld != 1)
         return;
-    if (tagset[seltags] & 1)
-        tagset[seltags] = (1 << (LENGTH(tags)-1));
+    if (selmon->tagset[selmon->seltags] & 1)
+        selmon->tagset[selmon->seltags] = (1 << (LENGTH(tags)-1));
     else
-        tagset[seltags] = tagset[seltags] >> 1;
+        selmon->tagset[selmon->seltags] = selmon->tagset[selmon->seltags] >> 1;
     arrange();
 }
 
@@ -216,6 +217,10 @@ static Key keys[] = {
     { MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
     { MODKEY,                       XK_0,      view,           {.ui = ~0 } },
     { MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
+    { MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
+    { MODKEY,                       XK_period, focusmon,       {.i = +1 } },
+    { MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
+    { MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
     TAGKEYS(                        XK_1,                      0)
     TAGKEYS(                        XK_2,                      1)
     TAGKEYS(                        XK_3,                      2)
