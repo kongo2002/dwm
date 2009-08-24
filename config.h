@@ -5,7 +5,7 @@ static const char font[]            = "-*-proggycleanszcp-medium-r-normal-*-13-*
 static const char normbordercolor[] = "#000000";
 static const char normbgcolor[]     = "#000000";
 static const char normfgcolor[]     = "#eeeeee";
-static const char selbordercolor[]  = "#888888";
+static const char selbordercolor[]  = "#333333";
 static const char selbgcolor[]      = "#000000";
 static const char selfgcolor[]      = "#ff6600";
 static const unsigned int borderpx  = 5;        /* border pixel of windows */
@@ -181,13 +181,13 @@ prevtag(const Arg *arg) {
 }
 
 /* commands */
-static const char *termcmd[]  = { "xterm", NULL };
+static const char *termcmd[]  = { "urxvt", NULL };
 static const char *browsercmd[] = { "firefox", NULL };
 static const char *mailcmd[] = { "thunderbird", NULL };
 static const char *launchercmd[] = { "gmrun", NULL };
 static const char *mpdcmd[] = { "mpc", "next", NULL };
 static const char *editorcmd[] = { "gvim", NULL };
-static const char *uzblcmd[] = { "uzbl", "--config", "/home/kongo/.uzbl/config", NULL };
+static const char *uzblcmd[] = { "uzbl", NULL };
 
 /* key definitions */
 static Key keys[] = {
