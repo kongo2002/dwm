@@ -122,7 +122,7 @@ pushup(const Arg *arg) {
         c->next = sel;
     }
     focus(sel);
-    arrange();
+    arrange(selmon);
 }
 
 static void
@@ -143,7 +143,7 @@ pushdown(const Arg *arg) {
         attach(sel);
     }
     focus(sel);
-    arrange();
+    arrange(selmon);
 }
 
 static void
@@ -160,7 +160,7 @@ nexttag(const Arg *arg) {
         selmon->tagset[selmon->seltags] = 1;
     else
         selmon->tagset[selmon->seltags] = selmon->tagset[selmon->seltags] << 1;
-    arrange();
+    arrange(selmon);
 }
 
 static void
@@ -177,7 +177,7 @@ prevtag(const Arg *arg) {
         selmon->tagset[selmon->seltags] = (1 << (LENGTH(tags)-1));
     else
         selmon->tagset[selmon->seltags] = selmon->tagset[selmon->seltags] >> 1;
-    arrange();
+    arrange(selmon);
 }
 
 /* commands */
