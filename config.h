@@ -21,7 +21,6 @@ static const char *tags[] = { "1", "2", "3", "4", "5", "6" };
 static const Rule rules[] = {
     /* class      instance    title       tags mask     isfloating  monitor */
     { "Gimp",     NULL,       NULL,       0,            True,       -1 },
-    { "jEdit",    NULL,       NULL,       0,            True,       -1 },
     { "Pidgin",   NULL,       NULL,       1 << 4,       True,       -1 },
     { "Firefox",  NULL,       NULL,       1 << 5,       False,      -1 },
     { "ut2004-bin",   NULL,   NULL,       1 << 3,       True,       -1 },
@@ -59,7 +58,7 @@ bstack(Monitor *m) {
         h = m->wh;
 
     for (i = 0, c = nexttiled(c->next); c; c = nexttiled(c->next), i++) {
-        resize(c, x, y, ((i + 1 == n) ? m->wx + m->ww - x : w) - 2 * c->bw, 
+        resize(c, x, y, ((i + 1 == n) ? m->wx + m->ww - x : w) - 2 * c->bw,
                 h - 2 * c->bw, False);
 
         if (w != m->ww)
@@ -182,18 +181,20 @@ prevtag(const Arg *arg) {
 
 /* commands */
 static const char *termcmd[]  = { "urxvt", NULL };
+static const char *alttermcmd[] = { "xterm", NULL };
 static const char *browsercmd[] = { "firefox", NULL };
 static const char *mailcmd[] = { "thunderbird", NULL };
 static const char *launchercmd[] = { "gmrun", NULL };
 static const char *mpdcmd[] = { "mpc", "next", NULL };
 static const char *editorcmd[] = { "gvim", NULL };
-static const char *uzblcmd[] = { "/home/kongo/programs/uzbl/uzbl", NULL };
+static const char *uzblcmd[] = { "uzbl-browser", NULL };
 
 /* key definitions */
 static Key keys[] = {
     /* modifier                     key        function        argument */
     { MODKEY,                       XK_p,      spawn,          {.v = launchercmd } },
-    { MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
+    { MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
+    { MODKEY,                       XK_x,      spawn,          {.v = alttermcmd } },
     { MODKEY,                       XK_f,      spawn,          {.v = browsercmd } },
     { MODKEY,                       XK_v,      spawn,          {.v = editorcmd } },
     { MODKEY,                       XK_n,      spawn,          {.v = mpdcmd } },
@@ -206,7 +207,7 @@ static Key keys[] = {
     { MODKEY|ControlMask,           XK_k,      pushup,         {0} },
     { MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
     { MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
-    { MODKEY,                       XK_Return, zoom,           {0} },
+    { MODKEY|ShiftMask,             XK_Return, zoom,           {0} },
     { MODKEY,                       XK_Tab,    view,           {0} },
     { MODKEY,                       XK_Escape, killclient,     {0} },
     { MODKEY|ControlMask,           XK_t,      setlayout,      {.v = &layouts[0]} },
