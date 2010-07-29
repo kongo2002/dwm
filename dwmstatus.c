@@ -1,10 +1,15 @@
 /* status bar script as a replacement for xsetroot -name "`foo`"
- * by Gregor Uhlenheuer */
+ * by Gregor Uhlenheuer
+ *
+ * compile with:
+ * gcc dwmstatus.c -o dwmstatus -lX11 `pkg-config --libs libmpdclient` -O2
+ */
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <assert.h>
 #include <time.h>
 
 #include <sys/sysinfo.h>
@@ -13,7 +18,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 
-#include <libmpdclient.h>
+#include <mpd/client.h>
 
 char text[1024];
 
@@ -23,79 +28,91 @@ static struct statfs fs;
 static unsigned long cpu0_total, cpu0_active, cpu1_total, cpu1_active = 0;
 static unsigned long net_transmit, net_receive = 0;
 
-int get_mpd2(char *status)
+static int mpd_error_exit(struct mpd_connection *conn)
 {
-    mpd_Connection *conn;
-    conn = mpd_newConnection("127.0.0.1", 6600, 10);
+#ifdef DEBUG
+    assert(mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS);
 
-    if (conn->error)
+    fprintf(stderr, "error: %s\n", mpd_connection_get_error_message(conn));
+#endif
+
+    mpd_connection_free(conn);
+    return 0;
+}
+
+int get_mpd(char *status)
+{
+    const char *artist, *title;
+    unsigned int duration;
+
+    struct mpd_connection *conn;
+    struct mpd_status *state;
+    struct mpd_song *song;
+    enum mpd_tag_type tag_type;
+
+    conn = mpd_connection_new("127.0.0.1", 6600, 10);
+
+    if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS)
+        return mpd_error_exit(conn);
+
+    if (!mpd_command_list_begin(conn, true) ||
+            !mpd_send_status(conn) ||
+            !mpd_send_current_song(conn) ||
+            !mpd_command_list_end(conn))
+        return mpd_error_exit(conn);
+
+    state = mpd_recv_status(conn);
+
+    if (state == NULL)
+        return mpd_error_exit(conn);
+
+    if (mpd_status_get_state(state) == MPD_STATE_PLAY ||
+            mpd_status_get_state(state) == MPD_STATE_PAUSE)
     {
-        mpd_closeConnection(conn);
-        return 0;
+        if (!mpd_response_next(conn))
+            return mpd_error_exit(conn);
+
+        song = mpd_recv_song(conn);
+
+        if (song != NULL)
+        {
+            tag_type = mpd_tag_name_iparse("artist");
+            artist = mpd_song_get_tag(song, tag_type, 0);
+
+            tag_type = mpd_tag_name_iparse("title");
+            title = mpd_song_get_tag(song, tag_type, 0);
+
+            duration = mpd_song_get_duration(song);
+
+            sprintf(status, "%s | %s - %s [%d:%02d]",
+                    status,
+                    artist,
+                    title,
+                    duration / 60,
+                    duration % 60);
+#ifdef DEBUG
+            printf("%s - %s [%d:%02d]\n",
+                    artist,
+                    title,
+                    duration / 60,
+                    duration % 60);
+#endif
+
+            mpd_song_free(song);
+        }
     }
 
-    mpd_Status *state;
-    mpd_InfoEntity *entity;
+    mpd_status_free(state);
 
-    mpd_sendCommandListOkBegin(conn);
-    mpd_sendStatusCommand(conn);
-    mpd_sendCurrentSongCommand(conn);
-    mpd_sendCommandListEnd(conn);
+    if (!mpd_response_finish(conn))
+        return mpd_error_exit(conn);
 
-    if ((state = mpd_getStatus(conn)) == NULL)
-    {
-        mpd_closeConnection(conn);
-        return 0;
-    }
-
-    if (state->state != MPD_STATUS_STATE_PLAY && 
-        state->state != MPD_STATUS_STATE_PAUSE)
-    {
-        mpd_closeConnection(conn);
-        return 0;
-    }
-
-    mpd_nextListOkCommand(conn);
-
-    entity = mpd_getNextInfoEntity(conn);
-
-    mpd_Song *song = entity->info.song;
-
-    if (entity->type == MPD_INFO_ENTITY_TYPE_SONG)
-    {
-        if (song->artist && song->title)
-            sprintf(status, "%s | %s - %s [%d:%.2d/%d:%.2d]", 
-                    status, 
-                    song->artist, 
-                    song->title,
-                    state->elapsedTime / 60,
-                    state->elapsedTime % 60,
-                    state->totalTime / 60,
-                    state->totalTime % 60);
-
-        mpd_freeInfoEntity(entity);
-    }
-
-    if (conn->error)
-    {
-        mpd_closeConnection(conn);
-        return 0;
-    }
-
-    mpd_finishCommand(conn);
-    if (conn->error)
-    {
-        mpd_closeConnection(conn);
-        return 0;
-    }
-
-    mpd_freeStatus(state);
-    mpd_closeConnection(conn);
+    mpd_connection_free(conn);
 
     return 1;
-} 
+}
 
-int get_fs2(char *status)
+int get_fs(char *status)
 {
     unsigned long total, used, free = 0;
 
@@ -103,11 +120,18 @@ int get_fs2(char *status)
     free = fs.f_bfree * fs.f_bsize / 1024 / 1024 / 1024;
     used = total - free;
 
-    sprintf(status, "%s | %.0f%% (%dG/%dG)", 
+    sprintf(status, "%s | %.0f%% (%dG/%dG)",
                     status,
                     (float) used / total * 100,
                     (int) used,
                     (int) total);
+
+#ifdef DEBUG
+    printf("FS: %.0f%% (%dG/%dG)\n",
+            (float) used / total * 100,
+            (int) used,
+            (int) total);
+#endif
 
     return 1;
 }
@@ -133,10 +157,10 @@ int get_cpu(char *status)
 
         if (strncmp(buffer, "cpu0", 4) == 0)
         {
-            sscanf(buffer, "%*s %lu %lu %lu %lu", 
-                           &total_new[0], 
-                           &total_new[1], 
-                           &total_new[2], 
+            sscanf(buffer, "%*s %lu %lu %lu %lu",
+                           &total_new[0],
+                           &total_new[1],
+                           &total_new[2],
                            &total_new[3]);
 
             total = total_new[0] + total_new[1] + total_new[2] + total_new[3];
@@ -152,10 +176,10 @@ int get_cpu(char *status)
         }
         else if (strncmp(buffer, "cpu1", 4) == 0)
         {
-            sscanf(buffer, "%*s %lu %lu %lu %lu", 
-                           &total_new[0], 
-                           &total_new[1], 
-                           &total_new[2], 
+            sscanf(buffer, "%*s %lu %lu %lu %lu",
+                           &total_new[0],
+                           &total_new[1],
+                           &total_new[2],
                            &total_new[3]);
 
             total = total_new[0] + total_new[1] + total_new[2] + total_new[3];
@@ -176,6 +200,10 @@ int get_cpu(char *status)
     fclose(cpu_fp);
 
     sprintf(status, "%s | %.0f%% %.0f%%", status, cpu0, cpu1);
+
+#ifdef DEBUG
+    printf("CPU: %.0f%% %.0f%%\n", cpu0, cpu1);
+#endif
 
     return 1;
 }
@@ -204,7 +232,7 @@ int get_net(char *status)
 
         if (strncmp(tmp, "eth0:", 5) == 0)
         {
-            sscanf(tmp, 
+            sscanf(tmp,
                    "eth0:%lu  %*d     %*d  %*d  %*d  %*d   %*d        %*d       %lu",
                    &receive, &transmit);
 
@@ -226,10 +254,16 @@ int get_net(char *status)
 
     fclose(net_fp);
 
-    sprintf(status, "%s | %.f %.f", 
-                    status, 
-                    (float)diff_receive/1024, 
+    sprintf(status, "%s | %.f %.f",
+                    status,
+                    (float)diff_receive/1024,
                     (float)diff_transmit/1024);
+
+#ifdef DEBUG
+    printf("NET: %.f %.f\n",
+            (float)diff_receive/1024,
+            (float)diff_transmit/1024);
+#endif
 
     return 1;
 }
@@ -250,13 +284,13 @@ int get_mem(char *status)
         if (fgets(buffer, 255, mem_fp) == NULL)
             break;
 
-        if (strncmp(buffer, "MemTotal:", 9) == 0) 
+        if (strncmp(buffer, "MemTotal:", 9) == 0)
             sscanf(buffer, "%*s %lu", &memtotal);
-        else if (strncmp(buffer, "MemFree:", 8) == 0) 
+        else if (strncmp(buffer, "MemFree:", 8) == 0)
             sscanf(buffer, "%*s %lu", &memfree);
-        else if (strncmp(buffer, "Buffers:", 8) == 0) 
+        else if (strncmp(buffer, "Buffers:", 8) == 0)
             sscanf(buffer, "%*s %lu", &buffers);
-        else if (strncmp(buffer, "Cached:", 7) == 0) 
+        else if (strncmp(buffer, "Cached:", 7) == 0)
         {
             sscanf(buffer, "%*s %lu", &cached);
             break;
@@ -268,11 +302,18 @@ int get_mem(char *status)
     memfree = memfree + buffers + cached;
     meminuse = memtotal - memfree;
 
-    sprintf(status, "%s | %.0f%% (%dM/%dM)", 
-                    status, 
-                    (float)meminuse/memtotal*100, 
-                    (int)meminuse/1024, 
+    sprintf(status, "%s | %.0f%% (%dM/%dM)",
+                    status,
+                    (float)meminuse/memtotal*100,
+                    (int)meminuse/1024,
                     (int)memtotal/1024);
+
+#ifdef DEBUG
+    printf("MEM: %.0f%% (%dM/%dM)\n",
+            (float)meminuse/memtotal*100,
+            (int)meminuse/1024,
+            (int)memtotal/1024);
+#endif
 
     return 1;
 }
@@ -285,13 +326,22 @@ int get_time(char *status)
     timestamp = time(NULL);
     now = localtime(&timestamp);
 
-    sprintf(status, "%s | %d:%.2d %.2d.%.2d.%.2d", 
-                    status, 
-                    now->tm_hour, 
-                    now->tm_min, 
-                    now->tm_mday, 
-                    now->tm_mon+1, 
+    sprintf(status, "%s | %d:%.2d %.2d.%.2d.%.2d",
+                    status,
+                    now->tm_hour,
+                    now->tm_min,
+                    now->tm_mday,
+                    now->tm_mon+1,
                     now->tm_year+1900-2000);
+
+#ifdef DEBUG
+    printf("TIME: %d:%.2d %.2d.%.2d.%.2d\n",
+            now->tm_hour,
+            now->tm_min,
+            now->tm_mday,
+            now->tm_mon+1,
+            now->tm_year+1900-2000);
+#endif
 
     return 1;
 }
@@ -325,8 +375,12 @@ int get_procs(char *status)
 
     sprintf(status, "%s | %hu/%hu", status, procs_run, procs);
 
+#ifdef DEBUG
+    printf("PROC: %hu/%hu\n", procs_run, procs);
+#endif
+
     return 1;
-}   
+}
 
 int get_uptime(char *status)
 {
@@ -336,6 +390,10 @@ int get_uptime(char *status)
     minutes = (info.uptime % 3600) / 60;
 
     sprintf(status, "%s | %huh%.2hu", status, hours, minutes);
+
+#ifdef DEBUG
+    printf("UPTIME: %huh%.2hu\n", hours, minutes);
+#endif
 
     return 1;
 }
@@ -363,10 +421,10 @@ int main(int argc, char **argv)
 
         get_cpu(statusbar);
         get_procs(statusbar);
-        get_fs2(statusbar);
+        get_fs(statusbar);
         get_mem(statusbar);
         get_net(statusbar);
-        get_mpd2(statusbar);
+        get_mpd(statusbar);
         get_uptime(statusbar);
         get_time(statusbar);
 
