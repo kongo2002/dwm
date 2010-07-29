@@ -20,13 +20,11 @@
 
 #include <mpd/client.h>
 
-char text[1024];
-
 static struct sysinfo info;
 static struct statfs fs;
 
-static unsigned long cpu0_total, cpu0_active, cpu1_total, cpu1_active = 0;
-static unsigned long net_transmit, net_receive = 0;
+static unsigned long cpu0_total = 0, cpu0_active = 0, cpu1_total = 0, cpu1_active = 0;
+static unsigned long net_transmit = 0, net_receive = 0;
 
 static int mpd_error_exit(struct mpd_connection *conn)
 {
@@ -143,7 +141,7 @@ int get_cpu(char *status)
     unsigned long total_new[4];
     unsigned long total, active = 0;
     unsigned long diff_total, diff_active = 0;
-    float cpu0, cpu1;
+    float cpu0 = 0, cpu1 = 0;
 
     cpu_fp = fopen("/proc/stat", "r");
 
@@ -211,9 +209,9 @@ int get_cpu(char *status)
 int get_net(char *status)
 {
     char buffer[256];
-    FILE *net_fp;
-    unsigned long receive, transmit = 0;
-    unsigned long diff_receive, diff_transmit = 0;
+    FILE *net_fp = NULL;
+    unsigned long receive = 0, transmit = 0;
+    unsigned long diff_receive = 0, diff_transmit = 0;
 
     net_fp = fopen("/proc/net/dev", "r");
 
