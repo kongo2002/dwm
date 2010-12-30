@@ -20,9 +20,6 @@
 
 #include <mpd/client.h>
 
-static struct sysinfo info;
-static struct statfs fs;
-
 static unsigned long cpu0_total = 0, cpu0_active = 0, cpu1_total = 0, cpu1_active = 0;
 static unsigned long net_transmit = 0, net_receive = 0;
 
@@ -110,13 +107,13 @@ char *get_mpd()
     return status;
 }
 
-char *get_fs()
+char *get_fs(struct statfs *fs)
 {
     static char status[128];
     unsigned long total, used, free = 0;
 
-    total = fs.f_blocks * fs.f_bsize / 1024 / 1024 / 1024;
-    free = fs.f_bfree * fs.f_bsize / 1024 / 1024 / 1024;
+    total = fs->f_blocks * fs->f_bsize / 1024 / 1024 / 1024;
+    free = fs->f_bfree * fs->f_bsize / 1024 / 1024 / 1024;
     used = total - free;
 
     snprintf(status, 128, "%.0f%% (%dG/%dG)",
@@ -345,7 +342,7 @@ char *get_time()
     return status;
 }
 
-char *get_procs()
+char *get_procs(struct sysinfo *info)
 {
     static char status[32];
     char buffer[256];
@@ -371,7 +368,7 @@ char *get_procs()
 
     fclose(proc_fp);
 
-    procs = info.procs;
+    procs = info->procs;
 
     snprintf(status, 32, "%hu/%hu", procs_run, procs);
 
@@ -382,13 +379,13 @@ char *get_procs()
     return status;
 }
 
-char *get_uptime()
+char *get_uptime(struct sysinfo *info)
 {
     static char status[64];
     unsigned short int hours, minutes;
 
-    hours = info.uptime / 3600;
-    minutes = (info.uptime % 3600) / 60;
+    hours = info->uptime / 3600;
+    minutes = (info->uptime % 3600) / 60;
 
     snprintf(status, 64, "%huh%.2hu", hours, minutes);
 
@@ -401,10 +398,12 @@ char *get_uptime()
 
 int main(int argc, char **argv)
 {
-    Display *disp;
-    Window root;
     char statusbar[1024];
     bool std = false;
+    Display *disp;
+    Window root;
+    struct sysinfo info;
+    struct statfs fs;
 
     if (argc > 1 && strncmp(argv[1], "--", 2) == 0)
         std = true;
@@ -427,12 +426,12 @@ int main(int argc, char **argv)
 
         snprintf(statusbar, 1024, "%s | %s | %s | %s | %s | %s | %s | %s",
                 get_cpu(),
-                get_procs(),
-                get_fs(),
+                get_procs(&info),
+                get_fs(&fs),
                 get_mem(),
                 get_net(),
                 get_mpd(),
-                get_uptime(),
+                get_uptime(&info),
                 get_time());
 
         if (std)
