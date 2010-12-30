@@ -448,3 +448,5 @@ int main(int argc, char **argv)
 
     return 1;
 }
+
+/* vim: set et sw=4 sts=4 tw=80: */
