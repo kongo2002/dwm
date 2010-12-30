@@ -83,7 +83,7 @@ char *get_mpd()
 
             duration = mpd_song_get_duration(song);
 
-            snprintf(status, 512, " | %s - %s [%d:%02d]",
+            snprintf(status, 512, "%s - %s [%d:%02d]",
                     artist,
                     title,
                     duration / 60,
@@ -119,7 +119,7 @@ char *get_fs()
     free = fs.f_bfree * fs.f_bsize / 1024 / 1024 / 1024;
     used = total - free;
 
-    snprintf(status, 128, " | %.0f%% (%dG/%dG)",
+    snprintf(status, 128, "%.0f%% (%dG/%dG)",
                     (float) used / total * 100,
                     (int) used,
                     (int) total);
@@ -198,7 +198,7 @@ char *get_cpu()
 
     fclose(cpu_fp);
 
-    snprintf(status, 128, " | %.0f%% %.0f%%", cpu0, cpu1);
+    snprintf(status, 128, "%.0f%% %.0f%%", cpu0, cpu1);
 
 #ifdef DEBUG
     printf("CPU: %.0f%% %.0f%%\n", cpu0, cpu1);
@@ -254,7 +254,7 @@ char *get_net()
 
     fclose(net_fp);
 
-    snprintf(status, 128, " | %.f %.f",
+    snprintf(status, 128, "%.f %.f",
                     (float)diff_receive/1024,
                     (float)diff_transmit/1024);
 
@@ -302,7 +302,7 @@ char *get_mem()
     memfree = memfree + buffers + cached;
     meminuse = memtotal - memfree;
 
-    snprintf(status, 128, " | %.0f%% (%dM/%dM)",
+    snprintf(status, 128, "%.0f%% (%dM/%dM)",
                     (float)meminuse/memtotal*100,
                     (int)meminuse/1024,
                     (int)memtotal/1024);
@@ -326,7 +326,7 @@ char *get_time()
     timestamp = time(NULL);
     now = localtime(&timestamp);
 
-    snprintf(status, 128, " | %d:%.2d %.2d.%.2d.%.2d",
+    snprintf(status, 128, "%d:%.2d %.2d.%.2d.%.2d",
                     now->tm_hour,
                     now->tm_min,
                     now->tm_mday,
@@ -373,7 +373,7 @@ char *get_procs()
 
     procs = info.procs;
 
-    snprintf(status, 32, " | %hu/%hu", procs_run, procs);
+    snprintf(status, 32, "%hu/%hu", procs_run, procs);
 
 #ifdef DEBUG
     printf("PROC: %hu/%hu\n", procs_run, procs);
@@ -390,7 +390,7 @@ char *get_uptime()
     hours = info.uptime / 3600;
     minutes = (info.uptime % 3600) / 60;
 
-    snprintf(status, 64, " | %huh%.2hu", hours, minutes);
+    snprintf(status, 64, "%huh%.2hu", hours, minutes);
 
 #ifdef DEBUG
     printf("UPTIME: %huh%.2hu\n", hours, minutes);
@@ -425,7 +425,7 @@ int main(int argc, char **argv)
         sysinfo(&info);
         statfs("/home", &fs);
 
-        snprintf(statusbar, 1024, "%s %s %s %s %s %s %s %s",
+        snprintf(statusbar, 1024, "%s | %s | %s | %s | %s | %s | %s | %s",
                 get_cpu(),
                 get_procs(),
                 get_fs(),
