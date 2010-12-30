@@ -26,7 +26,7 @@ static struct statfs fs;
 static unsigned long cpu0_total = 0, cpu0_active = 0, cpu1_total = 0, cpu1_active = 0;
 static unsigned long net_transmit = 0, net_receive = 0;
 
-static int mpd_error_exit(struct mpd_connection *conn)
+static char *mpd_error_exit(struct mpd_connection *conn)
 {
 #ifdef DEBUG
     assert(mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS);
@@ -35,11 +35,12 @@ static int mpd_error_exit(struct mpd_connection *conn)
 #endif
 
     mpd_connection_free(conn);
-    return 0;
+    return "";
 }
 
-int get_mpd(char *status)
+char *get_mpd()
 {
+    static char status[512];
     const char *artist, *title;
     unsigned int duration;
 
@@ -82,8 +83,7 @@ int get_mpd(char *status)
 
             duration = mpd_song_get_duration(song);
 
-            sprintf(status, "%s | %s - %s [%d:%02d]",
-                    status,
+            snprintf(status, 512, " | %s - %s [%d:%02d]",
                     artist,
                     title,
                     duration / 60,
@@ -107,19 +107,19 @@ int get_mpd(char *status)
 
     mpd_connection_free(conn);
 
-    return 1;
+    return status;
 }
 
-int get_fs(char *status)
+char *get_fs()
 {
+    static char status[128];
     unsigned long total, used, free = 0;
 
     total = fs.f_blocks * fs.f_bsize / 1024 / 1024 / 1024;
     free = fs.f_bfree * fs.f_bsize / 1024 / 1024 / 1024;
     used = total - free;
 
-    sprintf(status, "%s | %.0f%% (%dG/%dG)",
-                    status,
+    snprintf(status, 128, " | %.0f%% (%dG/%dG)",
                     (float) used / total * 100,
                     (int) used,
                     (int) total);
@@ -131,11 +131,12 @@ int get_fs(char *status)
             (int) total);
 #endif
 
-    return 1;
+    return status;
 }
 
-int get_cpu(char *status)
+char *get_cpu()
 {
+    static char status[128];
     char buffer[256];
     FILE *cpu_fp;
     unsigned long total_new[4];
@@ -197,17 +198,18 @@ int get_cpu(char *status)
 
     fclose(cpu_fp);
 
-    sprintf(status, "%s | %.0f%% %.0f%%", status, cpu0, cpu1);
+    snprintf(status, 128, " | %.0f%% %.0f%%", cpu0, cpu1);
 
 #ifdef DEBUG
     printf("CPU: %.0f%% %.0f%%\n", cpu0, cpu1);
 #endif
 
-    return 1;
+    return status;
 }
 
-int get_net(char *status)
+char *get_net()
 {
+    static char status[128];
     char buffer[256];
     FILE *net_fp = NULL;
     unsigned long receive = 0, transmit = 0;
@@ -252,8 +254,7 @@ int get_net(char *status)
 
     fclose(net_fp);
 
-    sprintf(status, "%s | %.f %.f",
-                    status,
+    snprintf(status, 128, " | %.f %.f",
                     (float)diff_receive/1024,
                     (float)diff_transmit/1024);
 
@@ -263,11 +264,12 @@ int get_net(char *status)
             (float)diff_transmit/1024);
 #endif
 
-    return 1;
+    return status;
 }
 
-int get_mem(char *status)
+char *get_mem()
 {
+    static char status[128];
     char buffer[256];
     FILE *mem_fp;
     unsigned long memtotal, memfree, buffers, cached, meminuse = 0;
@@ -300,8 +302,7 @@ int get_mem(char *status)
     memfree = memfree + buffers + cached;
     meminuse = memtotal - memfree;
 
-    sprintf(status, "%s | %.0f%% (%dM/%dM)",
-                    status,
+    snprintf(status, 128, " | %.0f%% (%dM/%dM)",
                     (float)meminuse/memtotal*100,
                     (int)meminuse/1024,
                     (int)memtotal/1024);
@@ -313,19 +314,19 @@ int get_mem(char *status)
             (int)memtotal/1024);
 #endif
 
-    return 1;
+    return status;
 }
 
-int get_time(char *status)
+char *get_time()
 {
+    static char status[128];
     time_t timestamp;
     struct tm *now;
 
     timestamp = time(NULL);
     now = localtime(&timestamp);
 
-    sprintf(status, "%s | %d:%.2d %.2d.%.2d.%.2d",
-                    status,
+    snprintf(status, 128, " | %d:%.2d %.2d.%.2d.%.2d",
                     now->tm_hour,
                     now->tm_min,
                     now->tm_mday,
@@ -341,13 +342,14 @@ int get_time(char *status)
             now->tm_year+1900-2000);
 #endif
 
-    return 1;
+    return status;
 }
 
-int get_procs(char *status)
+char *get_procs()
 {
-    unsigned short int procs, procs_run = 0;
+    static char status[32];
     char buffer[256];
+    unsigned short int procs, procs_run = 0;
     FILE *proc_fp;
 
     proc_fp = fopen("/proc/stat", "r");
@@ -371,29 +373,30 @@ int get_procs(char *status)
 
     procs = info.procs;
 
-    sprintf(status, "%s | %hu/%hu", status, procs_run, procs);
+    snprintf(status, 32, " | %hu/%hu", procs_run, procs);
 
 #ifdef DEBUG
     printf("PROC: %hu/%hu\n", procs_run, procs);
 #endif
 
-    return 1;
+    return status;
 }
 
-int get_uptime(char *status)
+char *get_uptime()
 {
+    static char status[64];
     unsigned short int hours, minutes;
 
     hours = info.uptime / 3600;
     minutes = (info.uptime % 3600) / 60;
 
-    sprintf(status, "%s | %huh%.2hu", status, hours, minutes);
+    snprintf(status, 64, " | %huh%.2hu", hours, minutes);
 
 #ifdef DEBUG
     printf("UPTIME: %huh%.2hu\n", hours, minutes);
 #endif
 
-    return 1;
+    return status;
 }
 
 int main(int argc, char **argv)
@@ -401,33 +404,44 @@ int main(int argc, char **argv)
     Display *disp;
     Window root;
     char statusbar[1024];
+    bool std = false;
 
-    if (!(disp = XOpenDisplay(0)))
+    if (argc > 1 && strncmp(argv[1], "--", 2) == 0)
+        std = true;
+
+    if (!std)
     {
-        fprintf(stderr, "%s: cannot open display\n", argv[0]);
-        return 0;
-    }
+        if (!(disp = XOpenDisplay(0)))
+        {
+            fprintf(stderr, "%s: cannot open display\n", argv[0]);
+            return 0;
+        }
 
-    root = DefaultRootWindow(disp);
+        root = DefaultRootWindow(disp);
+    }
 
     while (1)
     {
-        strcpy(statusbar, " ");
-
         sysinfo(&info);
         statfs("/home", &fs);
 
-        get_cpu(statusbar);
-        get_procs(statusbar);
-        get_fs(statusbar);
-        get_mem(statusbar);
-        get_net(statusbar);
-        get_mpd(statusbar);
-        get_uptime(statusbar);
-        get_time(statusbar);
+        snprintf(statusbar, 1024, "%s %s %s %s %s %s %s %s",
+                get_cpu(),
+                get_procs(),
+                get_fs(),
+                get_mem(),
+                get_net(),
+                get_mpd(),
+                get_uptime(),
+                get_time());
 
-        XStoreName(disp, root, statusbar);
-        XFlush(disp);
+        if (std)
+            printf("%s\n", statusbar);
+        else
+        {
+            XStoreName(disp, root, statusbar);
+            XFlush(disp);
+        }
 
         sleep(1);
     }
