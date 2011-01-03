@@ -180,14 +180,15 @@ prevtag(const Arg *arg) {
 }
 
 /* commands */
-static const char *termcmd[]  = { "urxvt", NULL };
-static const char *alttermcmd[] = { "xterm", NULL };
-static const char *browsercmd[] = { "firefox", NULL };
-static const char *mailcmd[] = { "thunderbird", NULL };
-static const char *launchercmd[] = { "gmrun", NULL };
-static const char *mpdcmd[] = { "mpc", "next", NULL };
-static const char *editorcmd[] = { "gvim", NULL };
-static const char *uzblcmd[] = { "uzbl-browser", NULL };
+static const char *termcmd[]       = { "urxvt", NULL };
+static const char *alttermcmd[]    = { "xterm", NULL };
+static const char *browsercmd[]    = { "firefox", NULL };
+static const char *altbrowsercmd[] = { "luakit", NULL };
+static const char *mailcmd[]       = { "thunderbird", NULL };
+static const char *launchercmd[]   = { "gmrun", NULL };
+static const char *mpdcmd[]        = { "mpc", "next", NULL };
+static const char *editorcmd[]     = { "gvim", NULL };
+static const char *explorercmd[]   = { "thunar", NULL };
 
 /* key definitions */
 static Key keys[] = {
@@ -199,7 +200,8 @@ static Key keys[] = {
     { MODKEY,                       XK_v,      spawn,          {.v = editorcmd } },
     { MODKEY,                       XK_n,      spawn,          {.v = mpdcmd } },
     { MODKEY,                       XK_t,      spawn,          {.v = mailcmd } },
-    { MODKEY,                       XK_u,      spawn,          {.v = uzblcmd } },
+    { MODKEY,                       XK_u,      spawn,          {.v = altbrowsercmd } },
+    { MODKEY,                       XK_e,      spawn,          {.v = explorercmd } },
     { MODKEY,                       XK_b,      togglebar,      {0} },
     { MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
     { MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
