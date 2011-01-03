@@ -32,11 +32,28 @@ static char *mpd_error_exit(struct mpd_connection *conn)
     return "";
 }
 
+static char *get_song_progress(unsigned int duration, unsigned int position)
+{
+    int i;
+    int index = (float) position / duration * 16;
+    static char string[16];
+
+    for (i=0; i<16; ++i)
+    {
+        if (i <= index)
+            string[i] = '>';
+        else
+            string[i] = '-';
+    }
+
+    return string;
+}
+
 char *get_mpd()
 {
     static char status[512];
     const char *artist, *title;
-    unsigned int duration;
+    unsigned int duration, pos;
 
     struct mpd_connection *conn;
     struct mpd_status *state;
@@ -76,16 +93,19 @@ char *get_mpd()
             title = mpd_song_get_tag(song, tag_type, 0);
 
             duration = mpd_song_get_duration(song);
+            pos = mpd_status_get_elapsed_time(state);
 
-            snprintf(status, 512, "%s - %s [%d:%02d]",
+            snprintf(status, 512, "%s - %s [%s] [%d:%02d]",
                     artist,
                     title,
+                    get_song_progress(duration, pos),
                     duration / 60,
                     duration % 60);
 #ifdef DEBUG
-            printf("%s - %s [%d:%02d]\n",
+            printf("%s - %s [%s] [%d:%02d]\n",
                     artist,
                     title,
+                    get_song_progress(duration, pos),
                     duration / 60,
                     duration % 60);
 #endif
