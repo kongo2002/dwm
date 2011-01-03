@@ -113,6 +113,8 @@ char *get_mpd()
             mpd_song_free(song);
         }
     }
+    else
+        snprintf(status, 512, "");
 
     mpd_status_free(state);
 
