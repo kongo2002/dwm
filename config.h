@@ -22,6 +22,8 @@ static const Rule rules[] = {
     /* class      instance    title       tags mask     isfloating  monitor */
     { "Gimp",     NULL,       NULL,       0,            True,       -1 },
     { "Skype",    NULL,       NULL,       0,            True,       -1 },
+    { "yEd",      NULL,       NULL,       0,            True,       -1 },
+    { "freerapid",    NULL,   NULL,       0,            True,       -1 },
     { "Pidgin",   NULL,       NULL,       1 << 4,       True,       -1 },
     { "Firefox",  NULL,       NULL,       1 << 5,       False,      -1 },
     { "ut2004-bin",   NULL,   NULL,       1 << 3,       True,       -1 },
