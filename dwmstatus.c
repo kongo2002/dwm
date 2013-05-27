@@ -5,15 +5,15 @@
  * gcc dwmstatus.c -o dwmstatus -lX11 `pkg-config --libs libmpdclient` -O2
  */
 
-#include <string.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <assert.h>
+#include <string.h>
 #include <time.h>
+#include <unistd.h>
 
-#include <sys/sysinfo.h>
 #include <sys/statfs.h>
+#include <sys/sysinfo.h>
 
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
@@ -249,10 +249,10 @@ char *get_net()
         while (*tmp == ' ')
             ++tmp;
 
-        if (strncmp(tmp, "eth0:", 5) == 0)
+        if (strncmp(tmp, "enp3s0:", 7) == 0)
         {
             sscanf(tmp,
-                   "eth0:%lu  %*d     %*d  %*d  %*d  %*d   %*d        %*d       %lu",
+                   "enp3s0: %lu  %*d     %*d  %*d  %*d  %*d   %*d        %*d       %lu",
                    &receive, &transmit);
 
             /* check for overflow */
@@ -420,28 +420,42 @@ char *get_uptime(struct sysinfo *info)
 
 int main(int argc, char **argv)
 {
+    int current;
     char statusbar[1024];
-    bool std = false;
+    bool x11 = false, loop = false;
     Display *disp;
     Window root;
     struct sysinfo info;
     struct statfs fs;
 
-    if (argc > 1 && strncmp(argv[1], "--", 2) == 0)
-        std = true;
+    /* parse arguments */
+    while ((current = getopt(argc, argv, "lx")) != -1)
+    {
+        switch (current)
+        {
+            case 'l':
+                loop = true;
+                break;
+            case 'x':
+                x11 = true;
+                break;
+            case '?':
+                return 1;
+        }
+    }
 
-    if (!std)
+    if (x11)
     {
         if (!(disp = XOpenDisplay(0)))
         {
             fprintf(stderr, "%s: cannot open display\n", argv[0]);
-            return 0;
+            return 1;
         }
 
         root = DefaultRootWindow(disp);
     }
 
-    while (1)
+    while (true)
     {
         sysinfo(&info);
         statfs("/home", &fs);
@@ -456,18 +470,21 @@ int main(int argc, char **argv)
                 get_uptime(&info),
                 get_time());
 
-        if (std)
-            printf("%s\n", statusbar);
-        else
+        if (x11)
         {
             XStoreName(disp, root, statusbar);
             XFlush(disp);
         }
+        else
+            printf("%s\n", statusbar);
+
+        if (!loop)
+            return 0;
 
         sleep(1);
     }
 
-    return 1;
+    return 0;
 }
 
 /* vim: set et sw=4 sts=4 tw=80: */
