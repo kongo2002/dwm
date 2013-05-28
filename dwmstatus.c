@@ -20,6 +20,8 @@
 
 #include <mpd/client.h>
 
+#define SONG_PROGRESS_LEN 16
+
 static char *mpd_error_exit(struct mpd_connection *conn)
 {
 #ifdef DEBUG
@@ -35,13 +37,13 @@ static char *mpd_error_exit(struct mpd_connection *conn)
 static char *get_song_progress(unsigned int duration, unsigned int position)
 {
     int i;
-    int index = (float) position / duration * 16;
-    static char string[16];
+    int index = (float) position / duration * SONG_PROGRESS_LEN;
+    static char string[SONG_PROGRESS_LEN];
 
-    for (i=0; i<16; ++i)
+    for (i=0; i<SONG_PROGRESS_LEN; ++i)
     {
         if (i <= index)
-            string[i] = '>';
+            string[i] = '+';
         else
             string[i] = '-';
     }
