@@ -177,6 +177,7 @@ nexttag(const Arg *arg) {
         selmon->tagset[selmon->seltags] = 1;
     else
         selmon->tagset[selmon->seltags] = selmon->tagset[selmon->seltags] << 1;
+    focus(NULL);
     arrange(selmon);
 }
 
@@ -194,6 +195,7 @@ prevtag(const Arg *arg) {
         selmon->tagset[selmon->seltags] = (1 << (LENGTH(tags)-1));
     else
         selmon->tagset[selmon->seltags] = selmon->tagset[selmon->seltags] >> 1;
+    focus(NULL);
     arrange(selmon);
 }
 
