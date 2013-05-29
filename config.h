@@ -2,6 +2,7 @@
 
 /* appearance */
 static const char font[]            = "-*-proggycleanszcp-medium-r-normal-*-13-*-*-*-*-*-*-*";
+//static const char font[]            = "-*-terminus-medium-r-*-*-16-*-*-*-*-*-*-*";
 static const char normbordercolor[] = "#111111";
 static const char normbgcolor[]     = "#111111";
 static const char normfgcolor[]     = "#eeeeee";
@@ -20,19 +21,32 @@ static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
 static const Rule rules[] = {
     /* class      instance    title       tags mask     isfloating  monitor */
-    { "Gimp",     NULL,       NULL,       0,            True,       -1 },
-    { "Skype",    NULL,       NULL,       0,            True,       -1 },
-    { "yEd",      NULL,       NULL,       0,            True,       -1 },
-    { "freerapid",    NULL,   NULL,       0,            True,       -1 },
-    { "Pidgin",   NULL,       NULL,       1 << 4,       True,       -1 },
-    { "Firefox",  NULL,       NULL,       1 << 5,       False,      -1 },
-    { "ut2004-bin",   NULL,   NULL,       1 << 3,       True,       -1 },
+    { "Gimp",        NULL,       NULL,       0,            True,       -1 },
+    { "Skype",       NULL,       NULL,       0,            True,       -1 },
+    { "yEd",         NULL,       NULL,       0,            True,       -1 },
+    { "freerapid",   NULL,       NULL,       0,            True,       -1 },
+    { "MPlayer",     NULL,       NULL,       0,            True,       -1 },
+    { "Pidgin",      NULL,       NULL,       1 << 8,       True,       -1 },
+
+    { "Firefox",     NULL,       NULL,       1 << 1,       False,      -1 },
+    { "Thunderbird", NULL,       NULL,       1 << 2,       False,      -1 },
+    { "xfreerdp",    NULL,       NULL,       1 << 7,       False,      0  },
 };
 
 /* layout(s) */
 static const float mfact      = 0.55; /* factor of master area size [0.05..0.95] */
 static const int nmaster      = 1;    /* number of clients in master area */
 static const Bool resizehints = True; /* True means respect size hints in tiled resizals */
+
+/* convenience function to spawn a new dwm and replacing the current
+ * process with the new spawned one */
+void
+self_restart(const Arg *arg) {
+    char *prog = "/usr/bin/dwm";
+    char *args[2] = { prog, NULL };
+
+    execv(prog, args);
+}
 
 /* bottom stack layout function */
 void
@@ -197,7 +211,7 @@ static const char *explorercmd[]   = { "thunar", NULL };
 /* key definitions */
 static Key keys[] = {
     /* modifier                     key        function        argument */
-    { MODKEY,                       XK_p,      spawn,          {.v = launchercmd } },
+    { MODKEY,                       XK_r,      spawn,          {.v = launchercmd } },
     { MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
     { MODKEY,                       XK_x,      spawn,          {.v = alttermcmd } },
     { MODKEY,                       XK_f,      spawn,          {.v = browsercmd } },
@@ -238,6 +252,7 @@ static Key keys[] = {
     TAGKEYS(                        XK_8,                      7)
     TAGKEYS(                        XK_9,                      8)
     { MODKEY|ShiftMask,             XK_q,      quit,           {0} },
+    { MODKEY|ControlMask,           XK_q,      self_restart,   {0} },
     { MODKEY,                       XK_Right,  nexttag,        {0} },
     { MODKEY,                       XK_Left,   prevtag,        {0} },
     { MODKEY|Mod1Mask,              XK_h,      prevtag,        {0} },

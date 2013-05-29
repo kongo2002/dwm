@@ -1,7 +1,5 @@
 #!/bin/sh
 
-~/.dwm/dwmstatus &
-
-fbsetbg -l
+~/.dwm/dwmstatus -xl &
 
 exec ~/.xinitrc
