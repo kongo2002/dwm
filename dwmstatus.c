@@ -128,16 +128,15 @@ char *get_mpd()
     return status;
 }
 
-char *get_fs(struct statfs *fs)
+void get_fs(struct statfs *fs, char *out, int len)
 {
-    static char status[128];
     unsigned long total, used, free = 0;
 
     total = fs->f_blocks * fs->f_bsize / 1024 / 1024 / 1024;
     free = fs->f_bfree * fs->f_bsize / 1024 / 1024 / 1024;
     used = total - free;
 
-    snprintf(status, 128, "%.0f%% (%dG/%dG)",
+    snprintf(out, len, "%.0f%% (%dG/%dG)",
                     (float) used / total * 100,
                     (int) used,
                     (int) total);
@@ -148,8 +147,6 @@ char *get_fs(struct statfs *fs)
             (int) used,
             (int) total);
 #endif
-
-    return status;
 }
 
 char *get_cpu()
@@ -423,12 +420,12 @@ char *get_uptime(struct sysinfo *info)
 int main(int argc, char **argv)
 {
     int current;
-    char statusbar[1024];
+    char statusbar[1024], home_str[128], sys_str[128];
     bool x11 = false, loop = false;
     Display *disp;
     Window root;
     struct sysinfo info;
-    struct statfs fs;
+    struct statfs home, sys;
 
     /* parse arguments */
     while ((current = getopt(argc, argv, "lx")) != -1)
@@ -460,12 +457,25 @@ int main(int argc, char **argv)
     while (true)
     {
         sysinfo(&info);
-        statfs("/home", &fs);
 
-        snprintf(statusbar, 1024, "%s | %s | %s | %s | %s | %s | %s | %s",
+        if (statfs("/home", &home)) {
+            fprintf(stderr, "Failed to obtain file system information for home");
+            return 1;
+        }
+
+        if (statfs("/", &sys)) {
+            fprintf(stderr, "Failed to obtain file system information for root");
+            return 1;
+        }
+
+        get_fs(&home, home_str, 128);
+        get_fs(&sys, sys_str, 128);
+
+        snprintf(statusbar, 1024, "%s | %s | %s | %s | %s | %s | %s | %s | %s",
                 get_cpu(),
                 get_procs(&info),
-                get_fs(&fs),
+                home_str,
+                sys_str,
                 get_mem(),
                 get_net(),
                 get_mpd(),
