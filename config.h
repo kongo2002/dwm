@@ -1,7 +1,10 @@
 /* See LICENSE file for copyright and license details. */
 
+#define FONT     "-*-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-*"
+#define ESC_FONT "\"" FONT "\""
+
 /* appearance */
-static const char font[]            = "-*-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-*";
+static const char font[]            = FONT;
 static const char normbordercolor[] = "#111111";
 static const char normbgcolor[]     = "#111111";
 static const char normfgcolor[]     = "#eeeeee";
