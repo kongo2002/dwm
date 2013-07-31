@@ -116,7 +116,7 @@ char *get_mpd()
         }
     }
     else
-        snprintf(status, 512, "");
+        snprintf(status, 512, " ");
 
     mpd_status_free(state);
 
@@ -157,7 +157,7 @@ char *get_cpu()
     unsigned long total_new[4];
     unsigned long total, active = 0;
     unsigned long diff_total, diff_active = 0;
-    float cpu0 = 0, cpu1 = 0;
+    double cpu0 = 0, cpu1 = 0;
     static unsigned long cpu0_total = 0, cpu0_active = 0;
     static unsigned long cpu1_total = 0, cpu1_active = 0;
 
@@ -185,7 +185,7 @@ char *get_cpu()
             diff_total = total - cpu0_total;
             diff_active = active - cpu0_active;
 
-            cpu0 = (float) diff_active / diff_total * 100;
+            cpu0 = (double) diff_active / diff_total * 100;
 
             cpu0_total = total;
             cpu0_active = active;
@@ -204,7 +204,7 @@ char *get_cpu()
             diff_total = total - cpu1_total;
             diff_active = active - cpu1_active;
 
-            cpu1 = (float) diff_active / diff_total * 100;
+            cpu1 = (double) diff_active / diff_total * 100;
 
             cpu1_total = total;
             cpu1_active = active;
@@ -422,7 +422,7 @@ int main(int argc, char **argv)
     int current;
     char statusbar[1024], home_str[128], sys_str[128];
     bool x11 = false, loop = false;
-    Display *disp;
+    Display *disp = NULL;
     Window root;
     struct sysinfo info;
     struct statfs home, sys;
