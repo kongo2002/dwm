@@ -27,7 +27,7 @@ static const Rule rules[] = {
     { "yEd",         NULL,       NULL,       0,            True,       -1 },
     { "freerapid",   NULL,       NULL,       0,            True,       -1 },
     { "MPlayer",     NULL,       NULL,       0,            True,       -1 },
-    { "Pidgin",      NULL,       NULL,       1 << 8,       True,       -1 },
+    { "Pidgin",      NULL,       NULL,       0,            True,       -1 },
 
     { "Firefox",     NULL,       NULL,       1 << 1,       False,      -1 },
     { "Thunderbird", NULL,       NULL,       1 << 2,       False,      -1 },
