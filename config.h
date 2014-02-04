@@ -209,7 +209,7 @@ static const char *mailcmd[]       = { "thunderbird", NULL };
 static const char *launchercmd[]   = { "dmenu_run", "-fn", ESC_FONT, NULL };
 static const char *mpdcmd[]        = { "mpc", "next", NULL };
 static const char *editorcmd[]     = { "gvim", NULL };
-static const char *explorercmd[]   = { "thunar", NULL };
+static const char *explorercmd[]   = { "urxvt", "-e", "ranger", NULL };
 
 /* key definitions */
 static Key keys[] = {
